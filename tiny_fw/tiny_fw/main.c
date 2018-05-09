@@ -7,8 +7,10 @@
 
 #include "ds_conf.h"
 #include "services/services.h"
+#include "MQTTSNPacket.h"
 #include <assert.h>
 #include <stdbool.h>
+
 
 
 
@@ -71,6 +73,7 @@ void program2(void){
 
 int main(void)
 {
+
 	disableGlobalInt();
 	SerialInit();
 	enableGlobalInt();
@@ -82,17 +85,17 @@ int main(void)
     ImageSelect sel = GetBootImageSelect();
 	
 	switch(sel){
-	
-	case PROGRAM1:
-		program1();
-		break;
 		
-	case PROGRAM2:
-		program2();
-		break;
+		case PROGRAM1:
+			program1();
+			break;
 		
-	default:
-		assert(0);
+		case PROGRAM2:
+			program2();
+			break;
+		
+		default:
+			assert(0);
 		
 	}
 	

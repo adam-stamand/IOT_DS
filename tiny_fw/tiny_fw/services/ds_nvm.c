@@ -21,7 +21,7 @@ void WriteEEPROM(uint16_t addr, uint8_t * data, size_t len){
 
 
 //TODO add timeout
-void ReadEEPROM(uint16_t addr, uint8_t * data, size_t len){
+ void ReadEEPROM(uint16_t addr, uint8_t * data, size_t len){
 	while (len--){
 		while(read_program_eeprom());
 		*data++ = read_byte_eeprom(addr);

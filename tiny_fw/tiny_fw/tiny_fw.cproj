@@ -30,15 +30,15 @@
     <EraseKey />
     <AsfFrameworkConfig>
       <framework-data>
-  <options />
-  <configurations />
-  <files />
-  <documentation help="" />
-  <offline-documentation help="" />
-  <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.26.0" />
-  </dependencies>
-</framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.26.0" />
+        </dependencies>
+      </framework-data>
     </AsfFrameworkConfig>
     <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
     <avrtoolserialnumber>000200017239</avrtoolserialnumber>
@@ -127,6 +127,7 @@
     <ListValues>
       <Value>%24(PackRepoDir)\atmel\ATtiny_DFP\1.3.147\include</Value>
       <Value>..</Value>
+      <Value>../MQTT-sn/MQTTSNPacket/src</Value>
     </ListValues>
   </avrgcc.compiler.directories.IncludePaths>
   <avrgcc.compiler.optimization.level>Optimize (-O1)</avrgcc.compiler.optimization.level>
@@ -158,13 +159,7 @@
     <Compile Include="drivers\drivers.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="drivers\ds_cpu.c">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="drivers\ds_cpu.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="drivers\ds_eeprom.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="drivers\ds_eeprom.h">
@@ -188,6 +183,114 @@
     <Compile Include="main.c">
       <SubType>compile</SubType>
     </Compile>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\lowlevel.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\lowlevel.h">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\pub0sub1.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\qos-1pub.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\qos-1pub_extended.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\qos0pub.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\qos0pub_register.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\qos1pub.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\pub0sub1.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\qos-1pub.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\qos-1pub_extended.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\qos0pub.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\qos0pub_register.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\qos1pub.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\transport.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\transport.h">
+      <SubType>compile</SubType>
+    </None>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNConnect.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNConnectClient.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNConnectServer.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNDeserializePublish.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNPacket.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNPacket.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNPublish.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNSearch.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNSearchClient.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNSearchServer.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNSerializePublish.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNSubscribe.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNSubscribeClient.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNSubscribeServer.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNUnsubscribe.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNUnsubscribeClient.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\MQTTSNUnsubscribeServer.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="MQTT-sn\MQTTSNPacket\src\StackTrace.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <None Include="MQTT-sn\MQTTSNPacket\test\test1.c">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\test\test2.c">
+      <SubType>compile</SubType>
+    </None>
     <Compile Include="services\ds_io.c">
       <SubType>compile</SubType>
     </Compile>
@@ -231,8 +334,41 @@
   <ItemGroup>
     <Folder Include="drivers" />
     <Folder Include="core" />
+    <Folder Include="MQTT-sn\" />
+    <Folder Include="MQTT-sn\MQTTSNPacket\" />
+    <Folder Include="MQTT-sn\MQTTSNPacket\samples\" />
+    <Folder Include="MQTT-sn\MQTTSNPacket\samples\linux\" />
+    <Folder Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\" />
+    <Folder Include="MQTT-sn\MQTTSNPacket\src\" />
+    <Folder Include="MQTT-sn\MQTTSNPacket\test\" />
     <Folder Include="services" />
     <Folder Include="utils" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="MQTT-sn\MQTTSNPacket\CMakeLists.txt">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\build">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\CMakeLists.txt">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\IBMIoTUDPExample.cpp">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\samples\linux\udp\build">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\src\CMakeLists.txt">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\test\build_test">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="MQTT-sn\MQTTSNPacket\test\CMakeLists.txt">
+      <SubType>compile</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>
