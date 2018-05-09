@@ -1,0 +1,3 @@
+[submodule "tiny_fw/tiny_fw/MQTT-sn"]
+	path = tiny_fw/tiny_fw/MQTT-sn
+	url = https://github.com/eclipse/paho.mqtt-sn.embedded-c.git
