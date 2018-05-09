@@ -35,39 +35,44 @@ size_t uartRXBytesUsed(void){
 void SerialSendByte(uint8_t data){
 	
 	
-	ConfigureSleep(9600);
+	ConfigureSleep(&Timer0, 9600);
 	
 	// Start Bit
 	SetPinValue(TX_PIN, LOW);
-	Sleep();
+	Sleep(&Timer0);
 	
 	// Send Data
 	for(uint8_t i = 0; i < sizeof(data) * BITS_IN_BYTE; i++){
 		SetPinValue(TX_PIN, (data & 0x01));
 		data >>= 1;
-		Sleep();
+		Sleep(&Timer0);
 	}
 	
 	// Stop Bit
 	SetPinValue(TX_PIN, HIGH);
-	Sleep();
+	Sleep(&Timer0);
 }
 
 DS_Error SerialSend(uint8_t * data, size_t len){
+	DisableINT0();
 	if (uart_state != IDLE){
 		return UART_BUSY;
+	} else{
+		uart_state = TRANSMITTING;
 	}
 
 	while (len--){
 		SerialSendByte(*data++);
 	}
+	uart_state = IDLE;
 	return SUCCESS;
 }
 
 
 void SerialInit (void) {
+	//init_timer(serialTimer, SERIAL_TIMER_LABEL);
 	MCUCR |= (1 << ISC01) | (0<<ISC00);
-	set_timer0_waveform(TIMER_CTC_MODE);
+	//set_timer0_waveform(TIMER_CTC_MODE);
 	SetPinDirection(RX_PIN, INPUT);         // Define DI as input
 	SetPinDirection(TX_PIN, OUTPUT);
 	SetPinValue(TX_PIN, HIGH);
@@ -89,18 +94,12 @@ size_t SerialReceive(uint8_t * data, size_t len){
 
 
 
-
-
-
-
-
-
 ISR (TIMER0_COMPA_vect) {
 	static uint8_t RX_BUFF = 0;
 	static uint8_t rx_bits = 0;
 	
 	if(uart_state == RECEIVE_START){
-		set_timer0_time(9600); // TODO only works if inlined
+		Timer0.set_time(9600); // TODO only works if inlined
 		uart_state = RECEIVING;
 	} else if(uart_state == RECEIVING){
 		rx_bits++;
@@ -109,8 +108,8 @@ ISR (TIMER0_COMPA_vect) {
 			rx_bits = 0;
 			uartRXPush(RX_BUFF);
 			uart_state = IDLE;
-			stop_timer0();
-			disable_timer0_int();
+			Timer0.stop();
+			Timer0.disable_int();
 			ClearINT0();
 			EnableINT0();
 		}
@@ -121,13 +120,15 @@ ISR (TIMER0_COMPA_vect) {
 
 
 void uart_rx_int_handler(void){
-	DisableINT0();          // Disable pin change interrupts
-	ConfigureSleep(19200);
-	set_timer0_waveform(TIMER_CTC_MODE);
 	uart_state = RECEIVE_START;
-	clear_timer0_int();
-	enable_timer0_int();
-	start_timer0();
+	DisableINT0();          // Disable pin change interrupts
+	//ConfigureSleep(19200);
+	//set_timer0_waveform(TIMER_CTC_MODE);
+	Timer0.set_prescaler(2);
+	Timer0.set_time(52);
+	Timer0.clear_int();
+	Timer0.enable_int();
+	Timer0.start();
 }
 
 

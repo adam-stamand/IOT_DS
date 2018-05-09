@@ -23,20 +23,20 @@ typedef enum {
 
 
 
-inline void ConfigureSleep(long unsigned int time_hz){
-	stop_timer0();
-	set_timer0(0);                    // Count up from 0 // set counter to 0
-	set_timer0_waveform(TIMER_CTC_MODE);
-	set_timer0_time(time_hz);
-	//set_timer0_prescaler(2);
-	//set_timer0_compare(104);
+inline void ConfigureSleep(Timer* timer, long unsigned int time_hz){
+	timer->stop();
+	timer->set_time(0);                    // Count up from 0 // set counter to 0
+	//set_timer0_waveform(TIMER_CTC_MODE);
+	//set_timer0_time(time_hz);
+	timer->set_prescaler(2);
+	timer->set_compare(104);
 }
 
-inline void Sleep(void){
-	enable_timer0_int();
-	start_timer0();
+inline void Sleep(Timer* timer){
+	timer->enable_int();
+	timer->start();
 	sleep();
-	disable_timer0_int();
+	timer->disable_int();
 }
 
 

@@ -18,54 +18,29 @@
 #define DS_PRESCALER_MASK ((1 <<CS02) | (1 <<CS01) | (1 <<CS00))
 
 
-inline void set_timer0_waveform(uint8_t mode){
-	TCCR0A = (TCCR0A & ~DS_WAVEFORM_MASK ) | (mode & DS_WAVEFORM_MASK );           
-}
+typedef enum {
+	TIMER0,
+	TIMER1,
+} TimerLabel;
 
-inline void set_timer0_prescaler(uint8_t mode){
-	TCCR0B = (TCCR0B & ~DS_PRESCALER_MASK ) | (mode & DS_PRESCALER_MASK);
-}
+typedef struct _Timer{
+	void (*set_waveform)(uint8_t mode);
+	void (*set_prescaler)(uint8_t mode);
+	void (*set_compare)(uint8_t val);
+	void (*set_controlA)(uint8_t mode);
+	void (*set_controlB)(uint8_t mode);
+	void (*set_time)(uint8_t val);
+	void (*start)(void);
+	void (*stop)(void);
+	void (*enable_int)(void);
+	void (*disable_int)(void);
+	void (*clear_int)(void);
+} Timer;
 
-inline void set_timer0_compare(uint8_t val){
-	OCR0A = val;
-}
+int init_timer(Timer timer, TimerLabel label);
+extern Timer Timer0;
 
-inline void set_timer0_controlA(uint8_t val){
-	TCCR0A = val;
-}
-
-inline void set_timer0_controlB(uint8_t val){
-	TCCR0B = val;
-}
-
-inline void set_timer0(uint8_t val){
-	TCNT0 = val;
-}
-
-
-inline void start_timer0(void){
-	GTCCR = (0 << TSM) | (0 << PSR0);
-}
-
-inline void stop_timer0(void){
-	GTCCR = (1 << TSM) | (1 << PSR0);
-}
-
-
-inline void enable_timer0_int(void){
-	TIMSK |= (1<<OCIE0A);
-}
-
-inline void disable_timer0_int(void){
-	TIMSK &= ~(1<<OCIE0A);          // Disable COMPA interrupt
-}
-
-inline void clear_timer0_int(void){
-	TIFR |= 1<<OCF0A;             // Clear output compare flag
-}
-
-
-
+/*
 extern uint16_t prescaler_buf[];
 inline void set_timer0_time(long unsigned int val){
 
@@ -84,4 +59,8 @@ inline void set_timer0_time(long unsigned int val){
 	set_timer0_prescaler(cnt+1);
 	set_timer0_compare(cycles);
 }
+*/
+
+
+
 #endif /* DS_TIMER_H_ */

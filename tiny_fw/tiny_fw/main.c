@@ -41,7 +41,12 @@ void program1(void){
 		//setPin(LED1_PIN, 0);	
 		//}
 	
-		SerialReceive(data, CIRC_MAX_SZ);
+		size_t temp = SerialReceive(data, CIRC_MAX_SZ);
+		char temp_str[100] = {0};
+		itoa(temp, temp_str, 10);
+		temp_str[100] = '\0';
+		Print(temp_str);
+		data[temp] = '\0'; // terminate string
 		Print(data);
 		TogglePin(LED1_PIN);
 		Print("Hello, I am the Door Sensor!\n");
@@ -60,7 +65,7 @@ void program2(void){
 
 
 
-
+//TODO add watchdog
 
 int main(void)
 {
