@@ -11,8 +11,7 @@
 
 #include "drivers/drivers.h"
 
-#define PIN_LOW 0
-#define PIN_HIGH 1
+
 
 typedef enum{
 	LOW = 0,
@@ -53,9 +52,7 @@ inline void TogglePin(IO_Pin pin){
 	toggle_pin((uint8_t)pin);
 }
 
-inline PinValue GetPinValue(IO_Pin pin){
-	return (PinValue)read_pin((uint8_t)pin);
-}
+PinValue GetPinValue(IO_Pin pin);
 
 inline void EnableINT0(void){
 	enable_int0();

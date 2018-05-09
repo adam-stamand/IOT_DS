@@ -14,7 +14,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define CIRC_MAX_SZ 100
+#define CIRC_MAX_SZ 245
 
 typedef struct _CircularBuffer{
 	uint16_t head;

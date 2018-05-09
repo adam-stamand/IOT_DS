@@ -7,5 +7,8 @@
 
 
 #include "drivers/drivers.h"
+#include "services/ds_io.h"
 
-
+PinValue GetPinValue(IO_Pin pin){
+	return (PinValue)read_pin((uint8_t)pin);
+}

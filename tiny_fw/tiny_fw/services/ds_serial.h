@@ -25,7 +25,7 @@ typedef enum {
 
 void SerialInit (void);
 size_t SerialReceive(uint8_t * data, size_t len);
-DS_Error SerialSend(uint8_t * data, uint8_t len);
+DS_Error SerialSend(uint8_t * data, size_t len);
 void SerialSendByte(uint8_t data);
 
 

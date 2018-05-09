@@ -16,6 +16,7 @@ UartState uart_state = IDLE;
 
 
 DS_Error uartRXPop(uint8_t* data){
+	
 	if (_pop_circ_buffer(&uartRXBuffer, data) != 0){
 		return RX_EMPTY;
 	}
@@ -34,7 +35,7 @@ size_t uartRXBytesUsed(void){
 void SerialSendByte(uint8_t data){
 	
 	
-	ConfigureSleep(CONF_104US);
+	ConfigureSleep(9600);
 	
 	// Start Bit
 	SetPinValue(TX_PIN, LOW);
@@ -52,7 +53,7 @@ void SerialSendByte(uint8_t data){
 	Sleep();
 }
 
-DS_Error SerialSend(uint8_t * data, uint8_t len){
+DS_Error SerialSend(uint8_t * data, size_t len){
 	if (uart_state != IDLE){
 		return UART_BUSY;
 	}
@@ -66,6 +67,7 @@ DS_Error SerialSend(uint8_t * data, uint8_t len){
 
 void SerialInit (void) {
 	MCUCR |= (1 << ISC01) | (0<<ISC00);
+	set_timer0_waveform(TIMER_CTC_MODE);
 	SetPinDirection(RX_PIN, INPUT);         // Define DI as input
 	SetPinDirection(TX_PIN, OUTPUT);
 	SetPinValue(TX_PIN, HIGH);
@@ -73,9 +75,6 @@ void SerialInit (void) {
 	ClearINT0();
 	EnableINT0();
 }
-
-
-
 
 
 size_t SerialReceive(uint8_t * data, size_t len){
@@ -101,31 +100,33 @@ ISR (TIMER0_COMPA_vect) {
 	static uint8_t rx_bits = 0;
 	
 	if(uart_state == RECEIVE_START){
-		OCR0A = 104;
+		set_timer0_time(9600); // TODO only works if inlined
 		uart_state = RECEIVING;
-		return;
-	}
-	
-	if(uart_state == RECEIVING){
+	} else if(uart_state == RECEIVING){
 		rx_bits++;
 		RX_BUFF =  (RX_BUFF >> 1) | (GetPinValue(RX_PIN) << 7);
 		if (rx_bits >= (sizeof(RX_BUFF) * BITS_IN_BYTE)){
 			rx_bits = 0;
 			uartRXPush(RX_BUFF);
 			uart_state = IDLE;
+			stop_timer0();
+			disable_timer0_int();
 			ClearINT0();
 			EnableINT0();
-			stop_timer0();
 		}
 	}
+	
 }
 
 
 
 void uart_rx_int_handler(void){
 	DisableINT0();          // Disable pin change interrupts
-	ConfigureSleep(9600);
+	ConfigureSleep(19200);
+	set_timer0_waveform(TIMER_CTC_MODE);
 	uart_state = RECEIVE_START;
+	clear_timer0_int();
+	enable_timer0_int();
 	start_timer0();
 }
 
