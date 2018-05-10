@@ -52,7 +52,10 @@ inline void TogglePin(IO_Pin pin){
 	toggle_pin((uint8_t)pin);
 }
 
-PinValue GetPinValue(IO_Pin pin);
+inline PinValue GetPinValue(IO_Pin pin){
+	return (PinValue)read_pin((uint8_t)pin);
+}
+
 
 inline void EnableINT0(void){
 	enable_int0();

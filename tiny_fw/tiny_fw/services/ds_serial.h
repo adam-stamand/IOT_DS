@@ -14,9 +14,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define SERIAL_BUFF_SZ 10
 #define BOOT_ADDR 0x30
-#define SERIAL_TIMER_LABEL TIMER0
-
 
 typedef enum {
 	TRANSMITTING,
@@ -29,7 +28,6 @@ typedef enum {
 void SerialInit (void);
 size_t SerialReceive(uint8_t * data, size_t len);
 DS_Error SerialSend(uint8_t * data, size_t len);
-void SerialSendByte(uint8_t data);
 
 
 

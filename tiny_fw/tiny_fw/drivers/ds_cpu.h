@@ -13,11 +13,11 @@
 #include <avr/sleep.h>
 #include <avr/interrupt.h>    // Needed to use interrupts
 
-inline void enableGlobalInt(void){
+inline void enable_global_int(void){
 	sei();
 }
 
-inline void disableGlobalInt(void){
+inline void disable_global_int(void){
 	cli();
 }
 

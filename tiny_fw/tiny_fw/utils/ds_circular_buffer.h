@@ -14,18 +14,18 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define CIRC_MAX_SZ 245
+
 
 typedef struct _CircularBuffer{
-	uint16_t head;
-	uint16_t tail;
-	uint8_t buffer[CIRC_MAX_SZ];
+	size_t head;
+	size_t tail;
+	size_t buffer_sz;
+	uint8_t *buffer;
 } CircularBuffer;
 
-uint8_t _pop_circ_buffer(CircularBuffer* buf, uint8_t* data);
-bool _push_circ_buffer(CircularBuffer* buf, uint8_t data);
-size_t _get_bytes_used(CircularBuffer* buf);
-
+uint8_t PopCircBuffer(CircularBuffer* buf, uint8_t* data);
+bool PushCircBuffer(CircularBuffer* buf, uint8_t data);
+size_t GetUsedBytes(CircularBuffer* buf);
 
 
 

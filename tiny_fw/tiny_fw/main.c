@@ -34,20 +34,20 @@ void program1(void){
 	
 	//SetBootImageSelect(PROGRAM2);
 
-	uint8_t data[CIRC_MAX_SZ];
+	uint8_t data[1];
 	while(1){
 		//x = readPin(IR_PIN);
 		//if (x){
 		//setPin(LED1_PIN, 0);	
 		//}
 	
-		size_t temp = SerialReceive(data, CIRC_MAX_SZ);
+		size_t temp = SerialReceive(data, 1);
 		char temp_str[100] = {0};
 		itoa(temp, temp_str, 10);
 		temp_str[100] = '\0';
 		Print(temp_str);
 		data[temp] = '\0'; // terminate string
-		Print(data);
+		Print((char*)data);
 		TogglePin(LED1_PIN);
 		Print("Hello, I am the Door Sensor!\n");
  		_delay_ms(3000);
@@ -70,9 +70,9 @@ void program2(void){
 int main(void)
 {
 
-	disableGlobalInt();
+	disable_global_int();
 	SerialInit();
-	enableGlobalInt();
+	enable_global_int();
 	
 	SetPinDirection(LED1_PIN, OUTPUT);
 	SetPinDirection(SW_PIN, OUTPUT);

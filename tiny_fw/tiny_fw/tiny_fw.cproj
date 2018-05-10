@@ -130,7 +130,7 @@
       <Value>../MQTT-sn/MQTTSNPacket/src</Value>
     </ListValues>
   </avrgcc.compiler.directories.IncludePaths>
-  <avrgcc.compiler.optimization.level>Optimize (-O1)</avrgcc.compiler.optimization.level>
+  <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
   <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
   <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
   <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
@@ -163,9 +163,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="drivers\ds_eeprom.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="drivers\ds_gpio.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="drivers\ds_gpio.h">
@@ -291,13 +288,7 @@
     <None Include="MQTT-sn\MQTTSNPacket\test\test2.c">
       <SubType>compile</SubType>
     </None>
-    <Compile Include="services\ds_io.c">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="services\ds_io.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="services\ds_nvm.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="services\ds_nvm.h">
@@ -309,13 +300,7 @@
     <Compile Include="services\ds_serial.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="services\ds_sleep.c">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="services\ds_sleep.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="services\ds_time.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="services\services.h">
