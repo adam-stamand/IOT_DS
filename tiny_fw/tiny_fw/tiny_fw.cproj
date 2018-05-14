@@ -130,7 +130,7 @@
       <Value>../MQTT-sn/MQTTSNPacket/src</Value>
     </ListValues>
   </avrgcc.compiler.directories.IncludePaths>
-  <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
+  <avrgcc.compiler.optimization.level>Optimize (-O1)</avrgcc.compiler.optimization.level>
   <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
   <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
   <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
@@ -142,8 +142,8 @@
   </avrgcc.linker.libraries.Libraries>
   <avrgcc.linker.memorysettings.Flash>
     <ListValues>
-      <Value>.program1=0x400</Value>
-      <Value>.program2=0x800</Value>
+      <Value>.program1=0x500</Value>
+      <Value>.program2=0x1000</Value>
     </ListValues>
   </avrgcc.linker.memorysettings.Flash>
   <avrgcc.assembler.general.IncludePaths>

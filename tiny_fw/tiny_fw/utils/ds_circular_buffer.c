@@ -8,7 +8,9 @@
 #include "utils/ds_circular_buffer.h"
 #include <stdlib.h>
 
-
+void FlushBuffer(CircularBuffer * buf){
+	buf->tail = buf->head;
+}
 
 uint8_t PopCircBuffer(CircularBuffer* buf, uint8_t* data){
 	if (buf->tail == buf->head){
@@ -20,10 +22,16 @@ uint8_t PopCircBuffer(CircularBuffer* buf, uint8_t* data){
 }
 
 bool PushCircBuffer(CircularBuffer* buf, uint8_t data){
-	buf->buffer[buf->head++] = data;
-	buf->head %= buf->buffer_sz;
-	
+
+	buf->buffer[buf->head] = data;
+	buf->head++;
+	buf->head %= buf->buffer_sz;	
+// 	if ((buf->head >= buf->buffer_sz)){
+// 		buf->head = 0;
+// 	}
+// 	
 	if (buf->head == buf->tail){
+		buf->tail = (buf->tail + 1) % buf->buffer_sz;
 		return true;
 	}
 	return false;

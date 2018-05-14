@@ -28,10 +28,12 @@ inline void EnableRX(void){
 }
 
 static void serial_send_byte(uint8_t data){
+	
 	ConfigureSleep(serialTimer, 9600);
 	
+	
 	// Start Bit
-	SetPinValue(TX_PIN, LOW);
+	SetPinValue(TX_PIN, LOW);	
 	Sleep(serialTimer);
 	
 	// Send Data
@@ -44,22 +46,26 @@ static void serial_send_byte(uint8_t data){
 	// Stop Bit
 	SetPinValue(TX_PIN, HIGH);
 	Sleep(serialTimer);
+
 }
 
 DS_Error SerialSend(uint8_t * data, size_t len){
+	
 	DisableRX();
+	while(uart_state != IDLE) _delay_ms(100);
 	if (uart_state != IDLE){
 		EnableRX();
 		return UART_BUSY;
 	} 
 	uart_state = TRANSMITTING;
-	EnableRX();
 
-	while (len--){
-		serial_send_byte(*data++);
-	}
-	uart_state = IDLE;
+ 	while (len--){
+ 		serial_send_byte(*data++);
+ 	}
+ 	uart_state = IDLE;
+	EnableRX();
 	return SUCCESS;
+	
 }
 
 size_t SerialReceive(uint8_t * data, size_t len){
@@ -69,12 +75,14 @@ size_t SerialReceive(uint8_t * data, size_t len){
 			break;
 		}
 	}
+	FlushBuffer(&rxBuffer);
 	return i;
 }
 
 
 void SerialInit (void) {
 	MCUCR |= (1 << ISC01) | (0<<ISC00);
+	//PCMSK =	1<< PCINT4;
 	serialTimer->set_waveform(TIMER_CTC_MODE);
 	SetPinDirection(RX_PIN, INPUT);         // Define DI as input
 	SetPinDirection(TX_PIN, OUTPUT);
@@ -82,6 +90,10 @@ void SerialInit (void) {
 	uart_state = IDLE;
 	ClearINT0();
 	EnableRX();
+	for (int i = 0; i < SERIAL_BUFF_SZ; i++){
+		rxBuffer.buffer[i] = i;
+	}
+	
 }
 
 
@@ -94,9 +106,13 @@ ISR (TIMER0_COMPA_vect) {
 	static uint8_t rx_bits = 0;
 	
 	if(uart_state == RECEIVE_START){
-		serialTimer->set_interval(9600, serialTimer);
+		serialTimer->set_compare(103);
 		uart_state = RECEIVING;
+		//TogglePin(TX_PIN);
+
 	} else if(uart_state == RECEIVING){
+		//TogglePin(TX_PIN);
+
 		rx_bits++;
 		RX_BUFF =  (RX_BUFF >> 1) | (GetPinValue(RX_PIN) << 7);
 		if (rx_bits >= (sizeof(RX_BUFF) * BITS_IN_BYTE)){
@@ -114,18 +130,31 @@ ISR (TIMER0_COMPA_vect) {
 
 
 static void uart_rx_int_handler(void){
+
 	uart_state = RECEIVE_START;
 	DisableRX();          // Disable pin change interrupts
-	serialTimer->set_interval(19200, serialTimer);
-	serialTimer->clear_int();
-	serialTimer->enable_int();
-	serialTimer->start();
+	//ConfigureSleep(serialTimer, 19200);
+	//serialTimer->stop();
+	//serialTimer->set_interval(19200, serialTimer);
+	OCR0A = 52;
+	TCCR0B = 2;
+	TCNT0 = 0;
+	TIMSK |= (1<<OCIE0A);
+	GTCCR = (0 << TSM) | (0 << PSR0);
+	//serialTimer->set_prescaler(2);
+	//serialTimer->set_compare(52);
+	//serialTimer->set_time(0);
+// 	serialTimer->clear_int();
+// 	serialTimer->enable_int();
+// 	serialTimer->start();
 }
 
 ISR(INT0_vect){
+		disable_global_int();
 	if (uart_state == IDLE){
 		uart_rx_int_handler();		
 	}
+	enable_global_int();
 }
 
 

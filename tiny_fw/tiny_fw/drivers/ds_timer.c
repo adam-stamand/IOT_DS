@@ -8,7 +8,7 @@
 
 #include "drivers/ds_timer.h"
 
-uint16_t prescaler_buf[] = {1, 3, 6, 8, 10};
+
 	
 	
 	
@@ -104,6 +104,7 @@ static void clear_timer1_int(void){
 
 
 //extern uint16_t prescaler_buf[];
+static uint8_t prescaler_buf[] = {0, 3, 6, 8, 10};
 void set_timer_interval(long unsigned int val, Timer* timer){
 
 	long unsigned int temp = F_CPU / val;
@@ -115,9 +116,9 @@ void set_timer_interval(long unsigned int val, Timer* timer){
 	}
 	
 	if (cnt >= 5){
-		assert(0);
+		//assert(0);
 	}
-	timer->set_prescaler(cnt);
+	timer->set_prescaler(cnt+1);
 	timer->set_compare(cycles);
 
 }

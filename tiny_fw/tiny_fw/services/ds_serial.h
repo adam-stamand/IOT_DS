@@ -14,7 +14,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define SERIAL_BUFF_SZ 10
+#define SERIAL_BUFF_SZ 200
 #define BOOT_ADDR 0x30
 
 typedef enum {

@@ -26,6 +26,7 @@ typedef struct _CircularBuffer{
 uint8_t PopCircBuffer(CircularBuffer* buf, uint8_t* data);
 bool PushCircBuffer(CircularBuffer* buf, uint8_t data);
 size_t GetUsedBytes(CircularBuffer* buf);
+void FlushBuffer(CircularBuffer * buf);
 
 
 
