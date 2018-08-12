@@ -7,10 +7,48 @@
 
 #include "ds_conf.h"
 #include "services/services.h"
+#include "utils/ds_crc.h"
 #include "MQTTSNPacket.h"
 #include <string.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
+
+
+MQTTSN_topicid topic;
+
+#define START_SEQ {0x01,0xAA}
+#define STOP_SEQ {0x54, 0xDD}
+
+#define DS_PACKET_SZ SERIAL_BUFF_SZ
+
+
+#define START_SEQ_SZ 2
+#define START_SEQ_OFFSET 0
+
+#define STOP_SEQ_SZ 2
+#define STOP_SEQ_OFFSET (DS_PACKET_SZ - STOP_SEQ_SZ)
+
+
+#define CRC_OFFSET (STOP_SEQ_OFFSET - 1)
+#define CRC_SZ 1
+
+#define LEN_OFFSET START_SEQ_SZ
+#define LEN_SZ 1
+
+#define TYPE_OFFSET START_SEQ_SZ + LEN_SZ
+#define TYPE_SZ 1
+
+#define PAYLOAD_SZ (DS_PACKET_SZ - STOP_SEQ_SZ - START_SEQ_SZ - CRC_SZ - LEN_SZ - TYPE_SZ)
+#define PAYLOAD_OFFSET START_SEQ_SZ + LEN_SZ + TYPE_SZ
+
+
+
+typedef enum {
+	DS_MQTT_MSG_TYPE,
+	DS_PRINT_MSG_TYPE,
+} MsgType;
+
 
 typedef enum{
 	DOOR_OPEN,
@@ -19,10 +57,14 @@ typedef enum{
 } DoorState;
 
 typedef enum{
-	OCCUPIED,
-	UNOCCUPIED		
-	
+	UNOCCUPIED = 0,	
+	OCCUPIED = 1,
 } OccupationState;
+
+uint8_t packet_buffer[SERIAL_BUFF_SZ] = {0};
+uint8_t* payload_buffer = &packet_buffer[PAYLOAD_OFFSET];
+volatile DoorState door_state = DOOR_CLOSED;
+volatile OccupationState occupied_state = UNOCCUPIED;
 
 
 ISR(BADISR_vect){
@@ -33,10 +75,24 @@ ISR(BADISR_vect){
 }
 
 
-void SerialTest(void){
-	uint8_t data2[] = {0xAA, 0x55, 0xAA, 0x55};
-	SerialSend(data2, 4);
+ISR(PCINT0_vect){
+	if(GetPinValue(SW_PIN)){
+		door_state = DOOR_OPEN;
+	}else{
+		door_state = DOOR_CLOSED;
+	}
+	//sleep_disable();
 }
+
+void Print(char* str){
+	SerialSend((uint8_t*)str, strlen(str));
+}
+
+void SerialTest(void){
+	Print("Hello, I am the Door Sensor!\n");
+}
+
+
 
 ImageSelect GetBootImageSelect(void){
 	ImageSelect sel;
@@ -48,29 +104,120 @@ void SetBootImageSelect(ImageSelect sel){
 	WriteEEPROM(BOOT_ADDR, (uint8_t*)&sel, sizeof(ImageSelect));
 }
 
-void Print(char* str){
-	SerialSend((uint8_t*)str, strlen(str));
+// TODO check message type for custom type
+int ParsePacket(void){
+	uint8_t start_seq[] = START_SEQ;
+	uint8_t stop_seq[] = STOP_SEQ;
+
+	for (size_t i = 0; i < START_SEQ_SZ; i++){
+		if (start_seq[i] != packet_buffer[i + START_SEQ_OFFSET]){
+			return -1;
+		}
+	}
+	
+	for (size_t i = 0; i < (STOP_SEQ_SZ); i++){
+		if (stop_seq[i] != packet_buffer[i+STOP_SEQ_OFFSET]){
+			return -1;
+		}
+	}
+	
+	uint8_t actual_crc = packet_buffer[CRC_OFFSET];
+	uint8_t expected_crc = calc_crc8(&packet_buffer[PAYLOAD_OFFSET], PAYLOAD_SZ);
+	if (actual_crc != expected_crc){
+		//return -1; //TODO add back crc
+	}
+	
+	
+	return 0;
 }
 
-DoorState door_state;
-OccupationState occupied_state;
+int GrabPacket(void){
+	size_t rv = 0;
 
-void ExecuteStateChange(){
+	rv = SerialReceive(packet_buffer, DS_PACKET_SZ);
+	if (rv == DS_PACKET_SZ){
+		return 0;
+	}
+	return -1;
+}
+
+
+
+
+
+int RecvPacket(unsigned char* buf, int count){
+	uint8_t len = 3;
+	while (len--){
+		if (GrabPacket() == 0){
+			if (ParsePacket() == 0){
+				return packet_buffer[LEN_OFFSET];
+			}
+		}
+		_delay_ms(500);
+	}
+	return -1;
+}
+
+int MQTTRecv(unsigned char* buf, int count){
+	return RecvPacket(buf, count);
+}
+
+int SendPacket(int len, MsgType msg_type){
+	uint8_t start_seq[] = START_SEQ;
+	uint8_t stop_seq[] = STOP_SEQ;
+	uint8_t length = (uint8_t)len;
+	uint8_t type = msg_type;
+	memcpy(&packet_buffer[START_SEQ_OFFSET], start_seq, START_SEQ_SZ);
+	memcpy(&packet_buffer[STOP_SEQ_OFFSET], stop_seq, STOP_SEQ_SZ);
+	packet_buffer[LEN_OFFSET] = length;
+	packet_buffer[CRC_OFFSET] = calc_crc8(payload_buffer, PAYLOAD_SZ);
+	SerialSend(packet_buffer, DS_PACKET_SZ);
+	return 0;
+}
+
+void PacketTest(void){
+	uint8_t test_data[] = {'0','1','2','3','4','5','6','7','8','9'};
+	memcpy(payload_buffer, test_data, 10);
+	SendPacket(10);
+}
+
+#define MAX_IR_HITS 3
+#define MAX_IR_ITER 10
+bool CheckIR(void){
+	int cnt = 0;
+	uint16_t iter = MAX_IR_ITER;
+	
+	while (iter--){
+		if (GetPinValue(IR_PIN)){
+			cnt++;
+			if (cnt >= MAX_IR_HITS){
+				return true;
+			}
+		}	
+		_delay_ms(1000);
+	}
+	return false;
+}
+
+void ExecuteStateChange(MQTTSN_topicid topic){
+	
 	switch(door_state){
 		case DOOR_CLOSED:
-			// check IR sensor
-			if (occupied_state == UNOCCUPIED){
-				// send unoccupied command to gateway
-			} else if (occupied_state == OCCUPIED){
+			if (CheckIR()){
+				occupied_state = OCCUPIED;
 				// do nothing
-			} else{
-				assert(0);
+			}else{
+				occupied_state = UNOCCUPIED;
+				uint16_t len = MQTTSNSerialize_publish(payload_buffer, PAYLOAD_SZ, 0, 1, 0, 0, topic, &occupied_state, 1);
+				int rc = SendPacket(len);
 			}
 			break;
 		
 		case DOOR_OPEN:
 			if (occupied_state == UNOCCUPIED){
-				// send occupied command to gateway
+				occupied_state = OCCUPIED;
+				uint16_t len = MQTTSNSerialize_publish(payload_buffer, PAYLOAD_SZ, 0, 1, 0, 0, topic, &occupied_state, 1);
+				int rc = SendPacket(len);
 			} else if (occupied_state == OCCUPIED){
 				// do nothing
 			} else{
@@ -90,57 +237,12 @@ bool CheckChange(bool input){
 	}
 }
 
-#define START_BYTE 0xAA
-#define DS_PACKET_SZ 20
-uint8_t data[DS_PACKET_SZ] = {0};
 
-#define START_SEQ_SZ 4
-#define START_SEQ_OFFSET 0
 
-#define PAYLOAD_LEN_SZ 1
-#define PAYLOAD_LEN_OFFSET (START_SEQ_SZ + START_SEQ_OFFSET)
 
-#define PAYLOAD_TYPE_SZ 1
-#define PAYLOAD_TYPE_OFFSET (PAYLOAD_LEN_OFFSET + PAYLOAD_LEN_SZ)
 
-#define STOP_SEQ_SZ 4
-#define STOP_SEQ_OFFSET (DS_PACKET_SZ - STOP_SEQ_SZ)
 
-#define PAYLOAD_OFFSET (PAYLOAD_TYPE_OFFSET + PAYLOAD_TYPE_SZ)
-//#define DATA_SZ  
 
-#define START_SEQ {0x01,0x01,0x44,0x55}
-#define STOP_SEQ {0x01,0x01,0x66,0x77}
-
-int ParsePacket(void){
-	uint8_t start_seq[] = START_SEQ;
-	uint8_t stop_seq[] = STOP_SEQ;
-
-	for (size_t i = 0; i < START_SEQ_SZ; i++){
-		if (start_seq[i] != data[i + START_SEQ_OFFSET]){
-			return -1;
-		}
-	}
-	
-	for (size_t i = 0; i < (STOP_SEQ_SZ); i++){
-		if (stop_seq[i] != data[i+STOP_SEQ_OFFSET]){
-			return -1;
-		}
-	}
-	
-	
-	return 0;
-}
-	
-int CheckForPacket(void){
-	size_t rv = 0;
-	rv = SerialReceive(data, DS_PACKET_SZ);
-	if (rv >= DS_PACKET_SZ){
-		return 0;
-	}
-	return -1;
-	 
-}
 
 typedef enum{
 	MQQT,
@@ -154,80 +256,105 @@ typedef enum{
 	OCCUPIED_DATA
 } RequestType;
 
-#define REQUEST_TYPE_OFFSET 0
-#define REQUEST_DATA_OFFSET 1
 
-int ProcessData(uint8_t* data_p, PayloadType type){
-	
-	switch(type){
-		case MQQT:
-			break;
-			
-		case REQUEST:
-			switch(data_p[REQUEST_TYPE_OFFSET]){
-				case ALL_DATA:
-					data_p[REQUEST_DATA_OFFSET] = 0xFF;
-					data_p[REQUEST_DATA_OFFSET+1] = 0xBB;
-					memcpy(&data[PAYLOAD_OFFSET],&data_p[REQUEST_DATA_OFFSET], 2);
-					SerialSend(data, DS_PACKET_SZ);
-					break;
-				default:
-					assert(0);
-					break;
-			}
-			break;
-			
-		case COMMAND:
-			break;
-		
-	}
-	return 0;
-	
-}
 
 void program1(void) __attribute__ ((section (".program1")));
 void program1(void){
-	
+	int rc;
 	//SetBootImageSelect(PROGRAM2);
-
-	bool temp = GetPinValue(SW_PIN);
-	CheckChange(temp);
-	while(1){
+	char print_buffer[100] = {0};
+	MQTTSNPacket_connectData options = MQTTSNPacket_connectData_initializer;
+	char *topicname = "living_room/doorsensor1";
+	unsigned short topicid;
+	options.clientID.cstring = "doorsensor1";
+	int len = MQTTSNSerialize_connect(payload_buffer, PAYLOAD_SZ, &options);
+	
+	
+	//SerialSend(payload_buffer, len);
+	/* wait for connack */
+	do{
+		rc = SendPacket(len);
+		_delay_ms(1000);
 		
-		if (CheckChange(temp)){
-			ExecuteStateChange();
+		}while (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) != MQTTSN_CONNACK);
+	//int temp_rv = MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv); 
+	//if (temp_rv == MQTTSN_CONNACK)
+	//{
+		int connack_rc = -1;
+		volatile int tester = -1;
+		if (MQTTSNDeserialize_connack(&connack_rc, payload_buffer, PAYLOAD_SZ) != 1 || connack_rc != 0)
+		{
+			//sprintf(print_buffer, "Unable to connect, return code %d\n", connack_rc);
+			//Print(print_buffer);
+			tester = 0;
 		}else{
-			_delay_ms(100);
+			//sprintf(print_buffer, "connected rc %d\n", connack_rc);
+			//Print(print_buffer);
+			tester = 1;
+		}
+	//}
+
+
+	int packetid = 1;
+	MQTTSNString topicstr;
+	topicstr.cstring = topicname;
+	topicstr.lenstring.len = strlen(topicname);
+	len = MQTTSNSerialize_register(payload_buffer, PAYLOAD_SZ, 0, packetid, &topicstr);
+
+	_delay_ms(1000);
+	rc = SendPacket(len);
+	_delay_ms(1000);
+	if (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) == MQTTSN_REGACK){ 	/* wait for regack */
+		unsigned short submsgid;
+		unsigned char returncode;
+		volatile int temp_me = -1;
+
+		rc = MQTTSNDeserialize_regack(&topicid, &submsgid, &returncode, payload_buffer, PAYLOAD_SZ);
+		if (returncode != 0)
+		{		
+			//sprintf(print_buffer, "return code %d\n", returncode);
+			//Print(print_buffer);
+			temp_me = 0;
+		}else{
+			//sprintf(print_buffer, "regack topic id %d\n", topicid);
+			//Print(print_buffer);
+			temp_me	= 1;
+		}
+	}
+		
+	volatile bool temp = GetPinValue(SW_PIN);
+	CheckChange(temp);
+
+
+	while(1){
+		sleep_enable();
+		//SerialTest();
+		
+
+		//SerialSend(payload_buffer, len);
+		temp = GetPinValue(SW_PIN);
+		if (CheckChange(temp)){
+			ExecuteStateChange(topic);
+		}
+		/*else{
 			// check for request packet
-			if (CheckForPacket() == 0){
-				
+			if (GrabPacket() == 0){
 				if(ParsePacket() == 0){
 					TogglePin(LED1_PIN);
-					ProcessData(&data[PAYLOAD_OFFSET], data[PAYLOAD_TYPE_OFFSET]);
-// 					data[STOP_SEQ_OFFSET] = '\0'; // terminate string
-// 					Print((char*)&data[PAYLOAD_OFFSET]);
- 					//Print("\n");					
-				}else{
-					
-					SerialSend(data, DS_PACKET_SZ);
-					//data[DS_PACKET_SZ] = '\0'; // terminate string
-					//Print((char*)&data[0]);
-					//Print("\n");
-							
+ 					SerialSend(packet_buffer, 10);					
 				}
 			}
-			
-			
 		}
-		
-		
-		//Print("Hello, I am the Door Sensor!\n");
-		sleep();
+		*/
 
+		sleep_cpu();
+		
+	
+		//_delay_ms(5000);
 	}
 }
 
-
+/*
 void program2(void) __attribute__ ((section (".program2")));
 void program2(void){
 	//SetBootImageSelect(PROGRAM1);
@@ -235,25 +362,90 @@ void program2(void){
 		_delay_ms(500);
 	}
 }
+*/
 
+
+
+void SwitchInit(void){
+	clear_pcint();
+	SetPinDirection(SW_PIN, INPUT);
+	SetPinValue(SW_PIN, HIGH); // Activates Pullup
+	enable_pcint();
+	enable_pcint_mask(SW_PIN);
+}
+
+
+void ConnectToGateway(void){
+	int rc;
+	char print_buffer[100] = {0};
+	unsigned short topicid;
+	MQTTSNPacket_connectData options = MQTTSNPacket_connectData_initializer;
+	char *topicname = "living_room/doorsensor1";
+	int len; 
+	int packetid = 1;
+	MQTTSNString topicstr;
+	topicstr.cstring = topicname;
+	topicstr.lenstring.len = strlen(topicname);
+	unsigned char returncode;
+	unsigned short submsgid;
+		
+	// Connect with Gateway //
+	// Fill payload buffer with connect message
+	len = MQTTSNSerialize_connect(payload_buffer, PAYLOAD_SZ, &options);
+	options.clientID.cstring = "doorsensor1";
+	// Send connect message until connetion ACK received
+	do{
+		rc = SendPacket(len, DS_MQTT_MSG_TYPE);
+		_delay_ms(1000);
+		
+	}while (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) != MQTTSN_CONNACK);
+	// Check for successful connection
+	if (MQTTSNDeserialize_connack(&returncode, payload_buffer, PAYLOAD_SZ) != 1 || returncode!= 0)
+	{
+		len =sprintf(payload_buffer, "Unable to connect, return code %d\n", returncode);
+		rc = SendPacket(len, DS_PRINT_MSG_TYPE);
+	}
+
+	// Register with Gateway //
+	// Fill payload buffer with register message
+	len = MQTTSNSerialize_register(payload_buffer, PAYLOAD_SZ, 0, packetid, &topicstr);
+	// Send connect message until registration ACK received
+	do{
+		rc = SendPacket(len, DS_MQTT_MSG_TYPE);
+		_delay_ms(1000);
+			
+	}while (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) != MQTTSN_REGACK);
+	
+	if (MQTTSNDeserialize_regack(&topicid, &submsgid, &returncode, payload_buffer, PAYLOAD_SZ) != 1 || returncode != 0 || submsgid != packetid);
+	{
+		len =sprintf(payload_buffer, "Unable to register, return code %d, msgid %d\n", returncode, submsgid);
+		rc= SendPacket(len, DS_PRINT_MSG_TYPE);
+	}
+	
+	topic.type = MQTTSN_TOPIC_TYPE_NORMAL;
+	topic.data.id = topicid;
+}
 
 
 //TODO add watchdog
-
 int main(void)
 {
-
+	// Begin Init/Check for Firmware
 	disable_global_int();
+	disable_pcint();
 	SerialInit();
+	sleep_enable(); //TODO make sure this is included where it's needed; been causing issues
 	enable_global_int();
-	
+
+	// Complete Init
+	SwitchInit();
 	SetPinDirection(LED1_PIN, OUTPUT);
-	SetPinDirection(SW_PIN, INPUT);
 	SetPinDirection(IR_PIN, INPUT);	
+	
 
     ImageSelect sel = GetBootImageSelect();
 	sel = PROGRAM1;
-
+	
 	switch(sel){
 		
 		case PROGRAM1:
@@ -261,7 +453,7 @@ int main(void)
 			break;
 		
 		case PROGRAM2:
-			program2();
+			//program2();
 			break;
 		
 		default:

@@ -44,6 +44,24 @@ inline void config_int0(uint8_t cnf){
 	MCUCR = (MCUCR & ~mask) | (cnf & mask);
 }
 
+inline void clear_pcint(void){
+	GIFR = 1<<PCIF;                 // Clear pin change interrupt flag
+}
 
+inline void enable_pcint(void){
+	GIMSK |= 1<<PCIE;               // Enable pin change interrupt
+}
+
+inline void disable_pcint(void){
+	GIMSK &= ~(1<<PCIE);
+}
+
+inline void enable_pcint_mask(uint8_t pin){
+	PCMSK |= 1<<pin;               // Enable pin change interrupt
+}
+
+inline void disable_pcint_mask(uint8_t pin){
+	PCMSK &= ~(1<<pin);               // Enable pin change interrupt
+}
 
 #endif /* DS_GPIO_H_ */

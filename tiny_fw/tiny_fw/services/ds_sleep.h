@@ -26,7 +26,7 @@ inline void ConfigureSleep(Timer* timer, long unsigned int time_hz){
 inline void Sleep(Timer* timer){
 	timer->enable_int();
 	timer->start();
-	sleep();
+	sleep_cpu();
 	timer->disable_int();
 }
 

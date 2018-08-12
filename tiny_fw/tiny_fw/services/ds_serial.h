@@ -14,7 +14,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define SERIAL_BUFF_SZ 200
+#define SERIAL_BUFF_SZ 100
 #define BOOT_ADDR 0x30
 
 typedef enum {
@@ -24,6 +24,8 @@ typedef enum {
 	IDLE
 }UartState;
 
+
+extern uint8_t packet_buffer[];
 
 void SerialInit (void);
 size_t SerialReceive(uint8_t * data, size_t len);

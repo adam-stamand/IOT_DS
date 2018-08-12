@@ -39,7 +39,7 @@ bool PushCircBuffer(CircularBuffer* buf, uint8_t data){
 
 size_t GetUsedBytes(CircularBuffer* buf){
 	int temp = buf->head - buf->tail;
-	return ((temp > 0) ? temp : buf->buffer_sz-temp);
+	return ((temp >= 0) ? temp : buf->buffer_sz+temp);
 }
 
 

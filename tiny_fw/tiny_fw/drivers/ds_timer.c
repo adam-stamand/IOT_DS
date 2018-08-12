@@ -108,8 +108,8 @@ static uint8_t prescaler_buf[] = {0, 3, 6, 8, 10};
 void set_timer_interval(long unsigned int val, Timer* timer){
 
 	long unsigned int temp = F_CPU / val;
-	long unsigned int cycles = temp;
-	uint8_t cnt = 0;
+	volatile long unsigned int cycles = temp;
+	volatile uint8_t cnt = 0;
 	
 	while ((cycles > 255) && (cnt++ < 5)){ // TODO replace 5
 		cycles = (temp >> prescaler_buf[cnt]);

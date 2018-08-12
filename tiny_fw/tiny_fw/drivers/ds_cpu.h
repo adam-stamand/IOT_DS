@@ -21,11 +21,7 @@ inline void disable_global_int(void){
 	cli();
 }
 
-inline void sleep(void){
-	sleep_enable();
-	sleep_cpu();
-	sleep_disable();
-}
+
 
 
 #endif /* DS_CPU_H_ */

@@ -9,9 +9,10 @@
 #include "services/services.h"
 #include "ds_conf.h"
 
-static uint8_t temp_buffer[SERIAL_BUFF_SZ] = {0};
-CircularBuffer rxBuffer = {.head = 0, .tail = 0, .buffer = temp_buffer, .buffer_sz = SERIAL_BUFF_SZ};
-UartState uart_state = IDLE;
+
+static uint8_t circ_buffer[SERIAL_BUFF_SZ + 1] = {0};
+CircularBuffer rxBuffer = {.head = 0, .tail = 0, .buffer = circ_buffer, .buffer_sz = SERIAL_BUFF_SZ + 1}; // +1 to allow room for head and tail to not overlap
+volatile UartState uart_state = IDLE;
 static Timer* serialTimer = &Timer0;
 
 static DS_Error PopRXData(uint8_t* data);
@@ -58,9 +59,10 @@ DS_Error SerialSend(uint8_t * data, size_t len){
 		return UART_BUSY;
 	} 
 	uart_state = TRANSMITTING;
-
- 	while (len--){
+	volatile uint16_t temp = len;
+ 	while (temp--){
  		serial_send_byte(*data++);
+		//_delay_ms(5);
  	}
  	uart_state = IDLE;
 	EnableRX();
@@ -70,6 +72,10 @@ DS_Error SerialSend(uint8_t * data, size_t len){
 
 size_t SerialReceive(uint8_t * data, size_t len){
 	size_t i = 0;
+	volatile size_t temp = GetRXUsedBytes(); 
+	if (temp != len){
+		return 0;
+	}
 	for (i = 0; i < len; i++){
 		if (PopRXData(data++) == RX_EMPTY){
 			break;
@@ -81,15 +87,22 @@ size_t SerialReceive(uint8_t * data, size_t len){
 
 
 void SerialInit (void) {
+	// MCU Control Register - Falling edge of INT0 causes interrupt
 	MCUCR |= (1 << ISC01) | (0<<ISC00);
-	//PCMSK =	1<< PCINT4;
+	// Set timer mode to Clear Timer on Compare
 	serialTimer->set_waveform(TIMER_CTC_MODE);
-	SetPinDirection(RX_PIN, INPUT);         // Define DI as input
+	// Set RX/TX GPIO directions
+	SetPinDirection(RX_PIN, INPUT);      
 	SetPinDirection(TX_PIN, OUTPUT);
+	// Set TX Pin idle high
 	SetPinValue(TX_PIN, HIGH);
+	// Set UART state
 	uart_state = IDLE;
+	// Clear any interrupts on INT0
 	ClearINT0();
+	// Enable the RX
 	EnableRX();
+	// ??
 	for (int i = 0; i < SERIAL_BUFF_SZ; i++){
 		rxBuffer.buffer[i] = i;
 	}
