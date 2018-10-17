@@ -15,7 +15,8 @@
 #include <stdio.h>
 
 
-MQTTSN_topicid topic;
+volatile MQTTSN_topicid topic;
+volatile int global_id;
 
 #define START_SEQ {0x01,0xAA}
 #define STOP_SEQ {0x54, 0xDD}
@@ -170,6 +171,7 @@ int SendPacket(int len, MsgType msg_type){
 	memcpy(&packet_buffer[START_SEQ_OFFSET], start_seq, START_SEQ_SZ);
 	memcpy(&packet_buffer[STOP_SEQ_OFFSET], stop_seq, STOP_SEQ_SZ);
 	packet_buffer[LEN_OFFSET] = length;
+	packet_buffer[TYPE_OFFSET] = type;
 	packet_buffer[CRC_OFFSET] = calc_crc8(payload_buffer, PAYLOAD_SZ);
 	SerialSend(packet_buffer, DS_PACKET_SZ);
 	return 0;
@@ -178,15 +180,15 @@ int SendPacket(int len, MsgType msg_type){
 void PacketTest(void){
 	uint8_t test_data[] = {'0','1','2','3','4','5','6','7','8','9'};
 	memcpy(payload_buffer, test_data, 10);
-	SendPacket(10);
+
 }
 
 #define MAX_IR_HITS 3
-#define MAX_IR_ITER 10
+#define MAX_IR_ITER 6
 bool CheckIR(void){
 	int cnt = 0;
 	uint16_t iter = MAX_IR_ITER;
-	
+	_delay_ms(4000); // allow PIR to go low after exiting
 	while (iter--){
 		if (GetPinValue(IR_PIN)){
 			cnt++;
@@ -199,26 +201,59 @@ bool CheckIR(void){
 	return false;
 }
 
-void ExecuteStateChange(MQTTSN_topicid topic){
+
+#define MAX_LOOP 3
+void DSPublish(uint8_t* data, size_t data_len){
+	int rc;
+	unsigned short topic_id;
+	unsigned short submsgid = 0;
+	unsigned short msgid = 0;
+	unsigned char returncode;
+	uint8_t loop_cnt = 0;
+	
+	uint16_t len = MQTTSNSerialize_publish(payload_buffer, PAYLOAD_SZ, 0, 1, 0, msgid , topic, data, data_len);
+	
+	do{
+		rc = SendPacket(len, DS_MQTT_MSG_TYPE);
+		_delay_ms(500);
+	}while (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) != MQTTSN_PUBACK && loop_cnt++ < MAX_LOOP);
+	
+	rc = MQTTSNDeserialize_puback(&topic_id, &submsgid, &returncode, payload_buffer, PAYLOAD_SZ);
+	
+	if ( (rc != 1) || (returncode != MQTTSN_RC_ACCEPTED) || (submsgid != msgid ) || topic.data.id != topic_id);
+	{
+		//len =sprintf(payload_buffer, "Unable to acknowledge publish %d %d %d %d %d %d\n", returncode, submsgid, msgid, rc, topic.data.id, topic_id);
+		//rc= SendPacket(len, DS_PRINT_MSG_TYPE);
+	}
+	topic.data.id = global_id;
+}
+
+void ExecuteStateChange(){
 	
 	switch(door_state){
 		case DOOR_CLOSED:
 			if (CheckIR()){
 				occupied_state = OCCUPIED;
+				int len =sprintf(payload_buffer, "cl/oc");
+				SendPacket(len, DS_PRINT_MSG_TYPE);
 				// do nothing
 			}else{
 				occupied_state = UNOCCUPIED;
-				uint16_t len = MQTTSNSerialize_publish(payload_buffer, PAYLOAD_SZ, 0, 1, 0, 0, topic, &occupied_state, 1);
-				int rc = SendPacket(len);
+				int len =sprintf(payload_buffer, "cl/un");
+				SendPacket(len, DS_PRINT_MSG_TYPE);
+				DSPublish(&occupied_state, 1);
 			}
 			break;
 		
 		case DOOR_OPEN:
 			if (occupied_state == UNOCCUPIED){
+				int len =sprintf(payload_buffer, "op/un");
+				SendPacket(len, DS_PRINT_MSG_TYPE);
 				occupied_state = OCCUPIED;
-				uint16_t len = MQTTSNSerialize_publish(payload_buffer, PAYLOAD_SZ, 0, 1, 0, 0, topic, &occupied_state, 1);
-				int rc = SendPacket(len);
+				DSPublish(&occupied_state, 1);
 			} else if (occupied_state == OCCUPIED){
+			int len =sprintf(payload_buffer, "op/oc");
+			SendPacket(len, DS_PRINT_MSG_TYPE);
 				// do nothing
 			} else{
 				assert(0);
@@ -258,83 +293,18 @@ typedef enum{
 
 
 
-void program1(void) __attribute__ ((section (".program1")));
+//void program1(void) __attribute__ ((section (".program1")));
 void program1(void){
-	int rc;
-	//SetBootImageSelect(PROGRAM2);
-	char print_buffer[100] = {0};
-	MQTTSNPacket_connectData options = MQTTSNPacket_connectData_initializer;
-	char *topicname = "living_room/doorsensor1";
-	unsigned short topicid;
-	options.clientID.cstring = "doorsensor1";
-	int len = MQTTSNSerialize_connect(payload_buffer, PAYLOAD_SZ, &options);
-	
-	
-	//SerialSend(payload_buffer, len);
-	/* wait for connack */
-	do{
-		rc = SendPacket(len);
-		_delay_ms(1000);
-		
-		}while (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) != MQTTSN_CONNACK);
-	//int temp_rv = MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv); 
-	//if (temp_rv == MQTTSN_CONNACK)
-	//{
-		int connack_rc = -1;
-		volatile int tester = -1;
-		if (MQTTSNDeserialize_connack(&connack_rc, payload_buffer, PAYLOAD_SZ) != 1 || connack_rc != 0)
-		{
-			//sprintf(print_buffer, "Unable to connect, return code %d\n", connack_rc);
-			//Print(print_buffer);
-			tester = 0;
-		}else{
-			//sprintf(print_buffer, "connected rc %d\n", connack_rc);
-			//Print(print_buffer);
-			tester = 1;
-		}
-	//}
-
-
-	int packetid = 1;
-	MQTTSNString topicstr;
-	topicstr.cstring = topicname;
-	topicstr.lenstring.len = strlen(topicname);
-	len = MQTTSNSerialize_register(payload_buffer, PAYLOAD_SZ, 0, packetid, &topicstr);
-
-	_delay_ms(1000);
-	rc = SendPacket(len);
-	_delay_ms(1000);
-	if (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) == MQTTSN_REGACK){ 	/* wait for regack */
-		unsigned short submsgid;
-		unsigned char returncode;
-		volatile int temp_me = -1;
-
-		rc = MQTTSNDeserialize_regack(&topicid, &submsgid, &returncode, payload_buffer, PAYLOAD_SZ);
-		if (returncode != 0)
-		{		
-			//sprintf(print_buffer, "return code %d\n", returncode);
-			//Print(print_buffer);
-			temp_me = 0;
-		}else{
-			//sprintf(print_buffer, "regack topic id %d\n", topicid);
-			//Print(print_buffer);
-			temp_me	= 1;
-		}
-	}
 		
 	volatile bool temp = GetPinValue(SW_PIN);
 	CheckChange(temp);
-
-
+	
 	while(1){
 		sleep_enable();
-		//SerialTest();
-		
-
-		//SerialSend(payload_buffer, len);
+	
 		temp = GetPinValue(SW_PIN);
 		if (CheckChange(temp)){
-			ExecuteStateChange(topic);
+			ExecuteStateChange();
 		}
 		/*else{
 			// check for request packet
@@ -348,22 +318,9 @@ void program1(void){
 		*/
 
 		sleep_cpu();
-		
-	
 		//_delay_ms(5000);
 	}
 }
-
-/*
-void program2(void) __attribute__ ((section (".program2")));
-void program2(void){
-	//SetBootImageSelect(PROGRAM1);
-	while(1){
-		_delay_ms(500);
-	}
-}
-*/
-
 
 
 void SwitchInit(void){
@@ -377,7 +334,6 @@ void SwitchInit(void){
 
 void ConnectToGateway(void){
 	int rc;
-	char print_buffer[100] = {0};
 	unsigned short topicid;
 	MQTTSNPacket_connectData options = MQTTSNPacket_connectData_initializer;
 	char *topicname = "living_room/doorsensor1";
@@ -400,10 +356,11 @@ void ConnectToGateway(void){
 		
 	}while (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) != MQTTSN_CONNACK);
 	// Check for successful connection
-	if (MQTTSNDeserialize_connack(&returncode, payload_buffer, PAYLOAD_SZ) != 1 || returncode!= 0)
+	rc = MQTTSNDeserialize_connack((int*)&returncode, payload_buffer, PAYLOAD_SZ);
+	if ( rc != 1 || returncode!= 0)
 	{
-		len =sprintf(payload_buffer, "Unable to connect, return code %d\n", returncode);
-		rc = SendPacket(len, DS_PRINT_MSG_TYPE);
+		//len =sprintf(payload_buffer, "Unable to connect, return code %d, rc %d\n", returncode, rc);
+		//rc = SendPacket(len, DS_PRINT_MSG_TYPE);
 	}
 
 	// Register with Gateway //
@@ -416,33 +373,48 @@ void ConnectToGateway(void){
 			
 	}while (MQTTSNPacket_read(payload_buffer, PAYLOAD_SZ, MQTTRecv) != MQTTSN_REGACK);
 	
-	if (MQTTSNDeserialize_regack(&topicid, &submsgid, &returncode, payload_buffer, PAYLOAD_SZ) != 1 || returncode != 0 || submsgid != packetid);
+	rc = MQTTSNDeserialize_regack(&topicid, &submsgid, &returncode, payload_buffer, PAYLOAD_SZ);
+	if ( (rc != 1) || (returncode != 0) || (submsgid != packetid));
 	{
-		len =sprintf(payload_buffer, "Unable to register, return code %d, msgid %d\n", returncode, submsgid);
-		rc= SendPacket(len, DS_PRINT_MSG_TYPE);
+		//len =sprintf(payload_buffer, "Unable to register, return code %d, msgid %d, rc %d\n", returncode, submsgid, rc);
+		//rc= SendPacket(len, DS_PRINT_MSG_TYPE);
 	}
 	
 	topic.type = MQTTSN_TOPIC_TYPE_NORMAL;
-	topic.data.id = topicid;
+	global_id = topicid;
+	topic.data.id = global_id;
 }
 
+
+void UpdateFirmware(void){
+	// Check for firmware update
+	int rv = RecvPacket(packet_buffer, 0);
+	if (rv != -1){
+		if (ParsePacket() ==0){
+			// update firmware
+		}
+	}	
+}
 
 //TODO add watchdog
 int main(void)
 {
-	// Begin Init/Check for Firmware
+	// Begin Init
 	disable_global_int();
 	disable_pcint();
 	SerialInit();
 	sleep_enable(); //TODO make sure this is included where it's needed; been causing issues
 	enable_global_int();
+	ConnectToGateway();
 
+	// Update firmware
+	UpdateFirmware();
+	
 	// Complete Init
 	SwitchInit();
 	SetPinDirection(LED1_PIN, OUTPUT);
 	SetPinDirection(IR_PIN, INPUT);	
 	
-
     ImageSelect sel = GetBootImageSelect();
 	sel = PROGRAM1;
 	
